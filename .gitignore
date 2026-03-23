@@ -1,0 +1,4 @@
+.data/*.json
+.data/generated/
+!.data/.gitkeep
+node_modules/

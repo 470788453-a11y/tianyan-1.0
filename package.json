@@ -1,0 +1,13 @@
+{
+  "name": "agentx-1.0",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "天衍1.0（人体智能协作模式开发计划）的独立实现项目",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  }
+}
+

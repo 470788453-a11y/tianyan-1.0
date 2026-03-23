@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>天衍1.0</title>
+    <style>
+      body { font-family: Inter, Arial, sans-serif; margin: 0; background: #0b1020; color: #e9eefc; }
+      .wrap { max-width: 1320px; margin: 0 auto; padding: 32px 20px 60px; }
+      .hero { display: grid; gap: 12px; margin-bottom: 24px; }
+      .card { background: #131a33; border: 1px solid #24305c; border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+      textarea, input, button { font: inherit; }
+      textarea { width: 100%; min-height: 120px; border-radius: 12px; border: 1px solid #36457d; background: #0f1530; color: #fff; padding: 12px; }
+      button { border: 0; border-radius: 10px; padding: 10px 14px; background: #4f7cff; color: white; cursor: pointer; }
+      button.secondary { background: #24305c; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #0f1530; padding: 12px; border-radius: 12px; }
+      .tasks { display: grid; gap: 12px; }
+      .tag { display: inline-block; font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #24305c; margin-right: 8px; }
+      .tag.entry { background: #2f5fd6; }
+      .tag.recommend { background: #1f8f63; }
+      .grid { display: grid; gap: 16px; grid-template-columns: 1.25fr 0.75fr; }
+      .viz-stack { display: grid; gap: 12px; }
+      .viz-box { background: #0f1530; border: 1px solid #24305c; border-radius: 12px; padding: 12px; }
+      .timeline-item { border-left: 3px solid #4f7cff; padding-left: 10px; margin: 10px 0; }
+      .node { border: 1px solid #36457d; border-radius: 12px; padding: 10px; margin: 8px 0; background: #121937; }
+      .node.subtask { border-color: #6d7cff; }
+      .edge { margin: 6px 0; color: #b7c3ea; }
+      .wave { border: 1px dashed #4a5b9a; border-radius: 12px; padding: 10px; margin: 8px 0; }
+      .muted { color: #9fb0df; font-size: 13px; }
+      .section-title { margin: 0 0 8px; font-size: 15px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .file { border: 1px solid #36457d; border-radius: 10px; padding: 10px; margin: 8px 0; background: #121937; }
+      .file.entry { border-color: #4f7cff; box-shadow: inset 0 0 0 1px rgba(79, 124, 255, 0.18); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="hero">
+        <h1>天衍1.0 / Phase 5</h1>
+        <div>人体智能协作模式开发计划 · Adapter Runtime + Dependency Queue + Timeline / Graph / Generated Files / Bundle Export</div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h2>创建任务</h2>
+            <textarea id="taskInput">帮我实现一个可审计、可批准、可扩展的多智能体编排系统，并给出架构、接口、测试、实现计划和文档</textarea>
+            <div class="row" style="margin-top: 12px">
+              <button id="runBtn">运行任务</button>
+              <button id="refreshBtn" class="secondary">刷新列表</button>
+              <button id="bgBtn" class="secondary">运行后台 Consolidation</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>最近任务</h2>
+            <div id="tasks" class="tasks"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>后台运行</h2>
+            <pre id="bgRuns">[]</pre>
+          </div>
+          <div class="card">
+            <h2>可视化面板</h2>
+            <div class="muted" style="margin-bottom:8px">计划名：天衍1.0 · 技术 slug：agentx-1.0</div>
+            <div id="vizPanel" class="viz-stack">
+              <div class="viz-box muted">选择任务后可查看 detail / timeline / graph / queue / files</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function fetchJson(url, options) {
+        const res = await fetch(url, options);
+        return res.json();
+      }
+
+      function esc(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;');
+      }
+
+      function renderTask(task) {
+        return `
+          <div class="card">
+            <div class="row">
+              <strong>${task.task_id}</strong>
+              <span class="tag">${task.status}</span>
+              <span class="tag">${task.mode}</span>
+              <span class="tag">risk:${task.risk_level}</span>
+              <span class="tag">complexity:${task.analysis?.complexity || 'n/a'}</span>
+              <span class="tag">depth:${task.depth || 0}</span>
+            </div>
+            <p>${esc(task.goal || '(no goal)')}</p>
+            <div class="row">
+              <span class="tag">deliverables: ${(task.analysis?.deliverables || []).join(', ') || 'none'}</span>
+              <span class="tag">subtasks: ${(task.subtasks || []).length}</span>
+              <span class="tag">verified: ${task.verification?.passed ? 'yes' : 'no'}</span>
+              <span class="tag">waves: ${task.subtask_queue?.waves?.length || 0}</span>
+              <span class="tag">actions: ${task.result?.output?.runtime_summary?.total_actions || 0}</span>
+            </div>
+            <pre>${JSON.stringify({
+              artifacts: task.result?.output?.artifacts,
+              runtime_summary: task.result?.output?.runtime_summary,
+              verification: task.verification,
+            }, null, 2)}</pre>
+            <div class="row">
+              <button onclick="approveTask('${task.task_id}')">Approve</button>
+              <button class="secondary" onclick="retryTask('${task.task_id}')">Retry</button>
+              <button class="secondary" onclick="runSubtasks('${task.task_id}')">Run Subtasks</button>
+              <button class="secondary" onclick="showDetail('${task.task_id}')">Detail</button>
+              <button class="secondary" onclick="showTimeline('${task.task_id}')">Timeline</button>
+              <button class="secondary" onclick="showGraph('${task.task_id}')">Graph</button>
+              <button class="secondary" onclick="showQueue('${task.task_id}')">Queue</button>
+              <button class="secondary" onclick="showFiles('${task.task_id}')">Files</button>
+              <button class="secondary" onclick="downloadBundle('${task.task_id}')">Download Bundle MD</button>
+              <button class="secondary" onclick="downloadBundleZip('${task.task_id}')">Download ZIP</button>
+            </div>
+          </div>`;
+      }
+
+      function renderDetailPanel(task, subtasks, events) {
+        return `
+          <div class="viz-box">
+            <h3 class="section-title">Task Detail</h3>
+            <div class="row">
+              <span class="tag">${task.status}</span>
+              <span class="tag">${task.mode}</span>
+              <span class="tag">risk:${task.risk_level}</span>
+            </div>
+            <p>${esc(task.goal)}</p>
+            <div class="muted">subtasks: ${subtasks.length} · events: ${events.length}</div>
+          </div>
+          <div class="viz-box">
+            <h3 class="section-title">Subtasks</h3>
+            ${subtasks.map((item) => `<div class="node subtask"><strong>${esc(item.deliverable || item.task_id)}</strong><div class="muted">status: ${item.status} · deps: ${(item.dependencies || []).length}</div></div>`).join('') || '<div class="muted">No subtasks</div>'}
+          </div>`;
+      }
+
+      function renderTimelinePanel(timeline) {
+        return `
+          <div class="viz-box">
+            <h3 class="section-title">Timeline</h3>
+            ${timeline.checkpoints.map((item) => `
+              <div class="timeline-item">
+                <div><strong>${esc(item.label)}</strong></div>
+                <div class="muted">${esc(item.at)}${item.source ? ` · ${esc(item.source)}` : ''}</div>
+              </div>
+            `).join('')}
+          </div>`;
+      }
+
+      function renderGraphPanel(graph) {
+        return `
+          <div class="viz-box">
+            <h3 class="section-title">Nodes</h3>
+            ${graph.nodes.map((node) => `
+              <div class="node ${node.type}">
+                <div><strong>${esc(node.deliverable || node.id)}</strong></div>
+                <div class="muted">${esc(node.type)} · status:${esc(node.status)} · depth:${node.depth}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="viz-box">
+            <h3 class="section-title">Edges</h3>
+            ${graph.edges.map((edge) => `<div class="edge mono">${esc(edge.from)} -> ${esc(edge.to)} <span class="muted">(${esc(edge.type)})</span></div>`).join('') || '<div class="muted">No edges</div>'}
+          </div>`;
+      }
+
+      function renderQueuePanel(queue) {
+        return `
+          <div class="viz-box">
+            <h3 class="section-title">Queue Status</h3>
+            <div class="row">
+              <span class="tag">status:${queue.status}</span>
+              <span class="tag">waves:${queue.waves?.length || 0}</span>
+              <span class="tag">blocked:${queue.blocked?.length || 0}</span>
+              <span class="tag">completed:${queue.completed_count || 0}/${queue.total_count || 0}</span>
+            </div>
+          </div>
+          ${(queue.waves || []).map((wave) => `
+            <div class="wave">
+              <strong>Wave ${wave.index}</strong>
+              ${wave.ready.map((item) => `<div class="node subtask"><strong>${esc(item.deliverable || item.task_id)}</strong><div class="muted">deps: ${(item.dependencies || []).length} · status:${esc(item.status)}</div></div>`).join('')}
+            </div>
+          `).join('')}
+          ${queue.blocked?.length ? `<div class="viz-box"><h3 class="section-title">Blocked</h3>${queue.blocked.map((item) => `<div class="node"><strong>${esc(item.deliverable || item.task_id)}</strong><div class="muted">waiting_for: ${(item.waiting_for || []).join(', ')}</div></div>`).join('')}</div>` : ''}
+        `;
+      }
+
+      function getEntryFileMeta(relativePath) {
+        const entryMap = {
+          'README.md': { label: '推荐入口文件', hint: '适合客户交付 / 团队交接先读' },
+          'index.json': { label: '推荐入口文件', hint: '适合程序 / 自动化入口' },
+          'bundle/bundle.md': { label: '推荐入口文件', hint: '适合直接查看完整汇总' },
+          'bundle/manifest.json': { label: '推荐入口文件', hint: '适合精确索引与下载元数据' },
+        };
+        return entryMap[relativePath] || null;
+      }
+
+      function pickDefaultPreviewFile(files) {
+        const preferred = ['README.md', 'bundle/bundle.md', 'index.json', 'bundle/manifest.json'];
+        for (const relativePath of preferred) {
+          const match = (files || []).find((file) => file.relative_path === relativePath);
+          if (match) return match;
+        }
+        return (files || []).find((file) => /\.(md|json|txt)$/i.test(file.relative_path || '')) || null;
+      }
+
+      function sortFilesForDisplay(files) {
+        return [...(files || [])].sort((a, b) => {
+          const aEntry = getEntryFileMeta(a.relative_path) ? 0 : 1;
+          const bEntry = getEntryFileMeta(b.relative_path) ? 0 : 1;
+          if (aEntry !== bEntry) return aEntry - bEntry;
+          return String(a.relative_path || '').localeCompare(String(b.relative_path || ''));
+        });
+      }
+
+      function renderFilesPanel(taskId, files, preview = null) {
+        const sortedFiles = sortFilesForDisplay(files);
+        return `
+          <div class="viz-box">
+            <h3 class="section-title">Generated Files</h3>
+            <div class="muted">本次执行真实落盘的文件，可直接预览文本内容或下载</div>
+            <div class="row" style="margin-top:8px"><span class="tag entry">推荐入口文件</span><span class="muted">README / index / bundle / manifest 会优先显示</span></div>
+            <div class="row" style="margin-top:8px"><button onclick="downloadBundle('${taskId}')">Download Bundle MD</button><button class="secondary" onclick="downloadBundleZip('${taskId}')">Download ZIP</button></div>
+          </div>
+          ${sortedFiles.map((file) => {
+            const entryMeta = getEntryFileMeta(file.relative_path);
+            return `
+            <div class="file ${entryMeta ? 'entry' : ''}">
+              <div class="row"><strong>${esc(file.relative_path)}</strong>${entryMeta ? `<span class="tag recommend">${esc(entryMeta.label)}</span>` : ''}</div>
+              <div class="muted">size: ${file.size} bytes · updated: ${esc(file.updated_at)}</div>
+              ${entryMeta ? `<div class="muted" style="margin-top:6px">${esc(entryMeta.hint)}</div>` : ''}
+              <div class="row" style="margin-top:8px"><button class="secondary" onclick="previewFile('${taskId}', '${encodeURIComponent(file.relative_path)}')">Preview</button><button class="secondary" onclick="downloadFile('${taskId}', '${encodeURIComponent(file.relative_path)}')">Download</button></div>
+            </div>`;
+          }).join('') || '<div class="viz-box muted">No generated files</div>'}
+          ${preview ? `<div class="viz-box"><h3 class="section-title">Preview · ${esc(preview.relative_path)}</h3><pre>${esc(preview.content)}</pre></div>` : ''}
+        `;
+      }
+
+      async function loadTasks() {
+        const data = await fetchJson('/api/tasks');
+        document.getElementById('tasks').innerHTML = data.tasks.map(renderTask).join('') || '<div>暂无任务</div>';
+      }
+
+      async function loadBackgroundRuns() {
+        const data = await fetchJson('/api/background/runs');
+        document.getElementById('bgRuns').textContent = JSON.stringify(data.runs, null, 2);
+      }
+
+      async function approveTask(taskId) {
+        await fetchJson(`/api/tasks/${taskId}/approve`, { method: 'POST' });
+        await loadTasks();
+      }
+
+      async function retryTask(taskId) {
+        await fetchJson(`/api/tasks/${taskId}/retry`, { method: 'POST' });
+        await loadTasks();
+      }
+
+      async function runSubtasks(taskId) {
+        const data = await fetchJson(`/api/tasks/${taskId}/run-subtasks`, { method: 'POST' });
+        document.getElementById('vizPanel').innerHTML = renderQueuePanel(data.task.subtask_queue || { status: 'ready', waves: [], blocked: [] });
+        await loadTasks();
+      }
+
+      async function showDetail(taskId) {
+        const [taskData, eventData] = await Promise.all([
+          fetchJson(`/api/tasks/${taskId}`),
+          fetchJson(`/api/tasks/${taskId}/events`),
+        ]);
+        document.getElementById('vizPanel').innerHTML = renderDetailPanel(taskData.task, taskData.subtasks, eventData.events);
+      }
+
+      async function showTimeline(taskId) {
+        const data = await fetchJson(`/api/tasks/${taskId}/timeline`);
+        document.getElementById('vizPanel').innerHTML = renderTimelinePanel(data.timeline);
+      }
+
+      async function showGraph(taskId) {
+        const data = await fetchJson(`/api/tasks/${taskId}/graph`);
+        document.getElementById('vizPanel').innerHTML = renderGraphPanel(data.graph) + renderQueuePanel(data.graph.queue || { status: 'ready', waves: [], blocked: [] });
+      }
+
+      async function showQueue(taskId) {
+        const data = await fetchJson(`/api/tasks/${taskId}/queue`);
+        document.getElementById('vizPanel').innerHTML = renderQueuePanel(data.queue);
+      }
+
+      async function showFiles(taskId) {
+        const data = await fetchJson(`/api/tasks/${taskId}/files`);
+        const files = data.files || [];
+        const defaultPreview = pickDefaultPreviewFile(files);
+
+        if (defaultPreview) {
+          try {
+            const fileData = await fetchJson(`/api/tasks/${taskId}/file?path=${encodeURIComponent(defaultPreview.relative_path)}`);
+            document.getElementById('vizPanel').innerHTML = renderFilesPanel(taskId, files, fileData.file);
+            return;
+          } catch (error) {
+            // fall through to files-only panel
+          }
+        }
+
+        document.getElementById('vizPanel').innerHTML = renderFilesPanel(taskId, files);
+      }
+
+      async function previewFile(taskId, encodedPath) {
+        const relativePath = decodeURIComponent(encodedPath);
+        const [filesData, fileData] = await Promise.all([
+          fetchJson(`/api/tasks/${taskId}/files`),
+          fetchJson(`/api/tasks/${taskId}/file?path=${encodeURIComponent(relativePath)}`),
+        ]);
+        document.getElementById('vizPanel').innerHTML = renderFilesPanel(taskId, filesData.files || [], fileData.file);
+      }
+
+      function downloadFile(taskId, encodedPath) {
+        const relativePath = decodeURIComponent(encodedPath);
+        window.open(`/api/tasks/${taskId}/download-file?path=${encodeURIComponent(relativePath)}`, '_blank');
+      }
+
+      function downloadBundle(taskId) {
+        window.open(`/api/tasks/${taskId}/download-bundle`, '_blank');
+      }
+
+      function downloadBundleZip(taskId) {
+        window.open(`/api/tasks/${taskId}/download-bundle-zip`, '_blank');
+      }
+
+      document.getElementById('runBtn').onclick = async () => {
+        const input = document.getElementById('taskInput').value;
+        await fetchJson('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input, context: { source: 'web-ui' } })
+        });
+        await loadTasks();
+      };
+
+      document.getElementById('refreshBtn').onclick = async () => {
+        await loadTasks();
+        await loadBackgroundRuns();
+      };
+
+      document.getElementById('bgBtn').onclick = async () => {
+        await fetchJson('/api/background/run', { method: 'POST' });
+        await loadBackgroundRuns();
+      };
+
+      loadTasks();
+      loadBackgroundRuns();
+      window.approveTask = approveTask;
+      window.retryTask = retryTask;
+      window.runSubtasks = runSubtasks;
+      window.showDetail = showDetail;
+      window.showTimeline = showTimeline;
+      window.showGraph = showGraph;
+      window.showQueue = showQueue;
+      window.showFiles = showFiles;
+      window.previewFile = previewFile;
+      window.downloadFile = downloadFile;
+      window.downloadBundle = downloadBundle;
+      window.downloadBundleZip = downloadBundleZip;
+    </script>
+  </body>
+</html>
+
