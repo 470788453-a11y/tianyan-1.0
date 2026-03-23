@@ -1,13 +1,13 @@
 {
-  "name": "agentx-1.0",
+  "name": "tianyan-1.0",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
-  "description": "天衍1.0（人体智能协作模式开发计划）的独立实现项目",
+  "description": "天衍1.0（Tianyan 1.0）— 一个可运行、可扩展的多智能体运行框架早期版本",
+  "license": "MIT",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test"
   }
 }
-
