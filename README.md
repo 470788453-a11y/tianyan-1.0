@@ -1,100 +1,187 @@
-# 澶╄1.0 / AgentX 1.0
+# 天衍 1.0 / Tianyan 1.0
 
-涓€涓嫭绔嬩簬鐖簯鐨?Phase 4 椤圭洰锛岀敤鏉ユ妸鈥滀汉浣撴櫤鑳戒綋鍗忎綔妯″紡鈥濈殑寮€鍙戣鍒掓寮忓懡鍚嶄负 **澶╄1.0**锛屽苟鍏堝仛鎴愬彲杩愯绯荤粺锛屽啀鑰冭檻鍚庣画骞跺叆 ClawCloud銆?
-> 褰撳墠绾﹀畾锛?*璁″垝鍚?/ 瀵瑰鍚嶇О = 澶╄1.0**锛涗唬鐮佺洰褰曚笌鍐呴儴鎶€鏈?slug 鏆傛椂浠嶄繚鐣?`agentx-1.0`锛岄伩鍏嶅奖鍝嶇幇鏈夎繍琛屼笌璋冭瘯閾捐矾銆?
-## 褰撳墠鑳藉姏
+> 一个面向真实任务推进的开源 AI 运行框架起点版本。  
+> An open-source AI runtime framework focused on task execution, traceability, and delivery closure.
 
-- TaskCard 浠诲姟鍗忚
-- 缁熶竴鐘舵€佹満
-- Event Bus 浜嬩欢鎬荤嚎
-- Meta Core锛圡ission / Policy / Persona / Preference锛?- Interpreter / Planner / Decider / Reflex Matcher / Verifier / Responder / Reflector
+## 项目简介
+
+很多 AI 项目擅长“生成一个回答”，但不一定擅长把一个任务稳定地推进到结束。
+
+**天衍 1.0** 想做的，是把下面几件基础能力组织清楚：
+
+- 任务怎么定义
+- 执行过程怎么拆分
+- 关键动作怎么留痕
+- 人和系统怎么协同确认
+- 一个结果怎么被判断为“真的完成了”
+
+所以这个项目更关注：**任务推进、过程留痕、结果收口**，而不只是单轮对话生成。
+
+当前版本是首个公开开源版本，重点是先把最小骨架、项目结构、基本说明和后续演进方向整理出来，作为后续迭代的稳定起点。
+
+## 当前已具备的核心模块
+
+- Meta Core
+- TaskCard 协议
+- 统一状态机
+- Event Bus 事件总线
+- Orchestrator
+- Interpreter / Planner / Decider / Reflex Matcher / Verifier / Responder / Reflector
 - Memory / Guardrail / Processor / Router / Executor / Tool Registry
-- Tool Adapter 鎶借薄锛坅dapter selection + artifact generation锛?- 瀛愪换鍔¤嚜鍔ㄦ媶鍒?+ 渚濊禆闃熷垪鎵ц
-- Task Timeline / Graph / Queue 瑙嗗浘
-- Background Worker锛圕onsolidation锛?- HTTP API
-- 绠€鍗?Web 鎺у埗鍙?- 鏂囦欢鎸佷箙鍖栵紙`.data/`锛?- Bundle 瀵煎嚭锛圧EADME / index / markdown / manifest / zip锛夛紝鏀寔鏇村儚瀹㈡埛浜や粯鍖?/ 鍥㈤槦浜ゆ帴鍖呯殑鍏ュ彛鏂囦欢
-- Node 鍐呯疆娴嬭瘯
+- Tool Adapter 抽象层
+- Background Worker
+- Subtask dependency queue + wave runner
+- Timeline / Graph / Queue builders
+- HTTP API + 简易 Web UI
+- JSON 文件持久化
 
-## 蹇€熷惎鍔?
+更完整的结构说明见：
+- `ARCHITECTURE.md`
+- `docs/agentx-1.0-plan.md`
+
+## 适合谁看
+
+这个仓库适合：
+
+- 想把 AI 从“会聊天”推进到“会做事”的开发者
+- 想研究任务流、执行链路、结果收口机制的人
+- 想搭一套可扩展 AI 运行骨架的个人或小团队
+
+## 快速开始
+
+### 1. 克隆仓库
+
 ```bash
+git clone https://github.com/470788453-a11y/tianyan-1.0.git
 cd tianyan-1.0
+```
+
+### 2. 安装依赖
+
+```bash
+npm install
+```
+
+### 3. 启动项目
+
+```bash
 npm start
 ```
 
-榛樿鍦板潃锛歚http://localhost:4317`
+### 4. 本地访问
 
-## API
+默认地址：
 
-### `GET /api/health`
-鍋ュ悍妫€鏌?
-### `GET /api/tasks`
-浠诲姟鍒楄〃
+```text
+http://localhost:4317
+```
 
-### `POST /api/tasks`
-鍒涘缓骞惰繍琛屼换鍔?
-### `GET /api/tasks/:taskId`
-鑾峰彇浠诲姟璇︽儏锛堝惈 subtasks锛?
-### `GET /api/tasks/:taskId/events`
-鑾峰彇浠诲姟浜嬩欢
+## API 概览
 
-### `GET /api/tasks/:taskId/timeline`
-鑾峰彇浠诲姟鏃堕棿绾?
-### `GET /api/tasks/:taskId/graph`
-鑾峰彇浠诲姟鍥剧粨鏋勶紙task/subtask/dependency锛?
-### `GET /api/tasks/:taskId/queue`
-鑾峰彇瀛愪换鍔′緷璧栭槦鍒?
-### `GET /api/tasks/:taskId/files`
-鑾峰彇浠诲姟鐢熸垚鏂囦欢鍒楄〃
+当前仓库已提供一组基础 HTTP API，例如：
 
-### `GET /api/tasks/:taskId/file?path=...`
-棰勮浠诲姟鐢熸垚鏂囦欢鍐呭
+- `GET /api/health`
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `GET /api/tasks/:taskId`
+- `GET /api/tasks/:taskId/events`
+- `GET /api/tasks/:taskId/timeline`
+- `GET /api/tasks/:taskId/graph`
+- `GET /api/tasks/:taskId/queue`
+- `GET /api/tasks/:taskId/files`
+- `GET /api/background/runs`
+- `POST /api/background/run`
 
-### `GET /api/tasks/:taskId/download-file?path=...`
-涓嬭浇鍗曚釜鐢熸垚鏂囦欢
+## 运行主链路
 
-### `GET /api/tasks/:taskId/download-bundle`
-涓嬭浇浠诲姟 bundle markdown 瀵煎嚭鏂囦欢
+```text
+input -> interpreter -> memory -> processor -> planner -> decider -> guardrail -> executor -> subtask-queue -> verifier -> responder -> reflector -> close
+```
 
-### `GET /api/tasks/:taskId/download-bundle-zip`
-涓嬭浇浠诲姟涓€閿墦鍖?zip 瀵煎嚭鏂囦欢锛坺ip 鍐呬互 `task_id/` 涓烘牴鐩綍锛屽苟闄勫甫 `README.md` / `index.json` 鍏ュ彛鏂囦欢锛?
-### `POST /api/tasks/:taskId/approve`
-鎵瑰噯楂橀闄╀换鍔″苟缁х画鎵ц
+## 风险闸门
 
-### `POST /api/tasks/:taskId/retry`
-閲嶈瘯浠诲姟
+高风险动作默认进入 `escalated`，例如：
 
-### `POST /api/tasks/:taskId/run-subtasks`
-鎵嬪姩瑙﹀彂瀛愪换鍔℃墽琛?
-### `GET /api/memory?q=xxx`
-鎼滅储璁板繂
+- deploy
+- delete / remove
+- send / publish / message / email
+- restart / shutdown / migrate
 
-### `GET /api/background/runs`
-鏌ョ湅鍚庡彴 consolidation 杩愯璁板綍
+这意味着项目不把“能生成”直接等同于“能安全交付”。
 
-### `POST /api/background/run`
-瑙﹀彂涓€娆″悗鍙?consolidation
+## 仓库结构
 
-## 褰撳墠涓婚摼璺?
-`input -> interpreter -> memory -> processor -> planner -> decider -> guardrail -> executor -> subtask-queue -> verifier -> responder -> reflector -> close`
+```text
+.
+├─ docs/          # 文档、计划、发布资料
+├─ public/        # 前端静态资源
+├─ src/           # 核心源码
+├─ tests/         # 测试
+├─ ARCHITECTURE.md
+├─ README.md
+├─ package.json
+└─ LICENSE
+```
 
-## 褰撳墠闃舵
+另外，`docs/launch-kit/` 中还包含：
 
-### 宸插疄鐜帮紙Phase 5 璧锋锛?- 鍗曚綋 orchestrator
-- deliberate / reflex 涓ょ涓绘祦绋?- 浠诲姟鍙璁°€佸彲鍥炴斁銆佸彲鎵瑰噯
-- 鑷姩鍒嗘瀽 deliverables / complexity
-- adapter runtime contract锛坅rtifact + actions锛?- 鐪熷疄 adapter 鍔ㄤ綔锛氬啓 artifact 鍒扮鐩樸€佽繍琛屽彈鎺?node/npm 鎺㈡祴鍛戒护銆佸鍑?markdown/text 鏂囦欢
-- generated files API
-- verification gate
-- background consolidation
-- subtask dependency queue + wave execution
-- timeline / graph / queue data builders
-- 鏇村彲璇荤殑鍓嶇 timeline / graph / queue / files 闈㈡澘
+- 开源总方案
+- README 草稿
+- Release Notes 草稿
+- 对外发布文案
+- 仓库结构蓝图
+- 发布前检查清单
 
-### 涓嬩竴姝?- 鎵╂洿澶氱湡姝ｅ彲鎵ц鐨勫閮?tool adapters
-- 澧炲姞 IO / Processor / Cleaner 鎻掍欢灞?- 澧炲姞 Federation / delegation manager
-- 澧炲姞 graph 浜や簰涓庤妭鐐硅鎯呴潰鏉?- 璇︾粏闃舵璺嚎瑙侊細`docs/agentx-1.0-plan.md`
+## 当前版本边界
 
+`v1.0.0` 更像一个**开源起点版本**，当前优先解决的是：
 
+- 项目定位清楚
+- 仓库结构可理解
+- 基础运行骨架已公开
+- 后续版本有明确演进空间
 
-## 开源发布资料
-- docs/launch-kit/ 目录包含 README / Release / 宣传 / 结构蓝图 / 发布检查清单。
+当前**不承诺**：
+
+- 完整商业化能力
+- 一键覆盖全部场景
+- 托管服务或现成线上环境
+- 私有密钥、账号和受限资源
+
+## Roadmap
+
+### v1.0
+- 完成首个开源版本发布
+- 明确项目定位、目录结构与使用方式
+- 提供最小可理解的运行骨架
+
+### v1.1
+- 补齐安装文档与最小样例
+- 增加更明确的配置说明
+- 优化项目可读性与新手上手体验
+
+### 后续方向
+- 更完整的运行观测
+- 更稳定的协作与确认机制
+- 更容易复用的模板化能力
+
+## 参与方式
+
+欢迎通过以下方式参与：
+
+- 提 Issue：反馈 bug、文档问题、使用体验
+- 提 PR：修文档、补样例、补测试、改结构
+- 提讨论：给出更清晰的场景、需求和改进建议
+
+如果准备提交较大改动，建议先开 issue 对齐目标，避免重复工作。
+
+## Release
+
+当前首个公开版本：
+
+- **v1.0.0**  
+  https://github.com/470788453-a11y/tianyan-1.0/releases/tag/v1.0.0
+
+## License
+
+MIT
